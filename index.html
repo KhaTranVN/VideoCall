@@ -3,94 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Call QR Code</title>
+    <title>Video Call & QR Scanner</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
-        :root { --primary: #6c5ce7; --bg: #f0f2f5; }
+        :root { --primary: #6c5ce7; --bg: #f0f2f5; --success: #00b894; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
         
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; margin-bottom: 20px; }
         
-        #qrcode { display: flex; justify-content: center; margin: 20px 0; padding: 10px; background: white; }
-        #qrcode img { border: 5px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        /* Khu vực QR */
+        .qr-section { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; }
+        #qrcode { padding: 10px; background: white; border: 1px solid #ddd; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; display: none; } /* Mặc định ẩn máy quét */
 
-        .id-badge { background: #eee; padding: 10px; border-radius: 10px; font-weight: bold; color: var(--primary); font-size: 1.2em; margin-bottom: 20px; }
+        .id-badge { background: #eee; padding: 10px; border-radius: 10px; font-weight: bold; color: var(--primary); font-size: 1.2em; }
         
         .video-box { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         video { width: 100%; border-radius: 12px; background: #2d3436; transform: scaleX(-1); }
         
-        input { width: 80%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; margin-bottom: 10px; outline: none; }
-        button { width: 85%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-        .status { font-size: 0.8em; color: #636e72; margin-top: 10px; }
+        .controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        input { width: 90%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; outline: none; text-align: center; }
+        
+        .btn-group { display: flex; gap: 10px; width: 95%; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-call { background: var(--primary); color: white; }
+        .btn-scan { background: var(--success); color: white; }
+        button:hover { opacity: 0.8; }
 
-        /* Style cho danh sách nhóm */
-        .team-info { background: #fff; padding: 15px; border-radius: 15px; width: 100%; max-width: 450px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .team-info h3 { margin-top: 0; color: #2d3436; font-size: 16px; border-bottom: 2px solid var(--primary); display: inline-block; padding-bottom: 5px; }
-        .team-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; }
-        .team-table th { color: #636e72; font-weight: 600; padding: 5px; }
-        .team-table td { padding: 5px; border-bottom: 1px solid #eee; }
+        .status { font-size: 0.8em; color: #636e72; margin-top: 15px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>Quét mã để gọi</h2>
-    <div id="qrcode"></div>
-    <div class="id-badge" id="my-id">Đang khởi tạo...</div>
+    <h2>Video Call QR</h2>
+    
+    <div class="qr-section">
+        <div id="qrcode"></div>
+        <div class="id-badge" id="my-id">Khởi tạo...</div>
+    </div>
 
-    <input type="text" id="remote-id" placeholder="Dán ID hoặc quét QR">
-    <button onclick="makeCall()">Bắt đầu cuộc gọi</button>
+    <div id="reader"></div>
+
+    <div class="controls">
+        <input type="text" id="remote-id" placeholder="Nhập ID hoặc Quét mã">
+        <div class="btn-group">
+            <button class="btn-scan" onclick="toggleScanner()">Quét mã QR</button>
+            <button class="btn-call" onclick="makeCall()">Gọi ngay</button>
+        </div>
+    </div>
 
     <div class="video-box">
         <div>
             <video id="local-video" autoplay muted playsinline></video>
-            <div style="font-size: 12px; margin-top: 5px;">Bạn</div>
+            <div style="font-size: 11px;">Bạn</div>
         </div>
         <div>
             <video id="remote-video" autoplay playsinline></video>
-            <div style="font-size: 12px; margin-top: 5px;">Đối phương</div>
+            <div style="font-size: 11px;">Đối phương</div>
         </div>
     </div>
-    <p class="status" id="status">Đang chờ camera...</p>
-</div>
-
-<div class="team-info">
-    <h3>Sinh viên thực hiện:</h3>
-    <table class="team-table">
-        <thead>
-            <tr>
-                <th>MSSV</th>
-                <th>Họ và Tên</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td>DH52200824</td><td>Trần Minh Kha</td></tr>
-            <tr><td>DH52201237</td><td>Lê Trọng Phúc</td></tr>
-            <tr><td>DH52200558</td><td>Đoàn Trường Duy</td></tr>
-            <tr><td>DH52200953</td><td>Phạm Tuấn Kiệt</td></tr>
-            <tr><td>DH52201440</td><td>Trần Anh Thắng</td></tr>
-        </tbody>
-    </table>
+    
+    <p class="status" id="status">Đang thiết lập hệ thống...</p>
 </div>
 
 <script>
     const myShortId = Math.floor(1000 + Math.random() * 9000).toString();
     const peer = new Peer(myShortId);
     let localStream;
+    let html5QrCode;
 
+    // 1. Khởi tạo Peer và tạo mã QR cá nhân
     peer.on('open', (id) => {
-        document.getElementById('my-id').innerText = "ID: " + id;
+        document.getElementById('my-id').innerText = "ID Của Bạn: " + id;
         new QRCode(document.getElementById("qrcode"), {
             text: id,
-            width: 150,
-            height: 150
+            width: 120,
+            height: 120
         });
         document.getElementById('status').innerText = "Sẵn sàng kết nối!";
     });
 
+    // 2. Lấy quyền truy cập Camera
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
             localStream = stream;
@@ -100,8 +97,45 @@
             document.getElementById('status').innerText = "Lỗi: Không tìm thấy Camera!";
         });
 
+    // 3. Logic Quét mã QR
+    function toggleScanner() {
+        const readerDiv = document.getElementById('reader');
+        if (readerDiv.style.display === 'block') {
+            stopScanner();
+        } else {
+            readerDiv.style.display = 'block';
+            startScanner();
+        }
+    }
+
+    function startScanner() {
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, // Ưu tiên camera sau
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                // Khi quét thành công
+                document.getElementById('remote-id').value = decodedText;
+                stopScanner();
+                alert("Đã quét được ID: " + decodedText);
+            },
+            (errorMessage) => { /* Quét liên tục nên không cần log lỗi ở đây */ }
+        ).catch(err => {
+            console.error("Lỗi khởi động máy quét", err);
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('reader').style.display = 'none';
+            });
+        }
+    }
+
+    // 4. Xử lý cuộc gọi
     peer.on('call', (call) => {
-        document.getElementById('status').innerText = "Đang có cuộc gọi đến...";
+        document.getElementById('status').innerText = "Cuộc gọi đến...";
         call.answer(localStream);
         call.on('stream', (remoteStream) => {
             document.getElementById('remote-video').srcObject = remoteStream;
@@ -111,10 +145,10 @@
 
     function makeCall() {
         const rId = document.getElementById('remote-id').value;
-        if (!rId) return alert("Vui lòng nhập ID!");
+        if (!rId) return alert("Vui lòng quét mã hoặc nhập ID!");
         
         const call = peer.call(rId, localStream);
-        document.getElementById('status').innerText = "Đang gọi tới " + rId + "...";
+        document.getElementById('status').innerText = "Đang gọi " + rId + "...";
         
         call.on('stream', (remoteStream) => {
             document.getElementById('remote-video').srcObject = remoteStream;
